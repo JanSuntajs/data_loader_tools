@@ -32,10 +32,15 @@ class Loader(object):
     def __init__(self, misc_defs_mod, job_defs_mod, storage, data_path):
         super(Loader, self).__init__()
 
+        if self.__class__.__name__ == "Loader":
+            raise ValueError("This class is not intended"
+                             " to be instantiated directly.")
+
         self.pars = misc_defs_mod.pars
         self.val_cases = misc_defs_mod.val_cases
         self.reformat_dict = misc_defs_mod.reformat_dict
         self.value_format_template = misc_defs_mod.value_format_template
+        self.value_separator_template = misc_defs_mod.value_separator_template
 
         self.redef_dict = job_defs_mod.redef_dict
         self.job_dict = job_defs_mod.job_dict
@@ -161,7 +166,7 @@ class Loader(object):
         folder_exists = os.path.isdir(folder)
         return folder, folder_exists
 
-    def system_dict_to_str(self, system_dict):
+    def system_dict_to_str(self, system_dict={}):
         """
         Converts a dictionary of system parameters
         into a string.
@@ -175,7 +180,7 @@ class Loader(object):
 
         pass
 
-    def system_str_to_dict(self, system_str):
+    def system_str_to_dict(self, system_str=""):
         """
         Converts a string describing system
         parameters to a dict.
@@ -185,8 +190,9 @@ class Loader(object):
                 parameters.
 
         """
+        pass
 
-    def get_modpar_values(self, filename):
+    def get_modpar_values(self, filename=""):
         """
         A routine for extracting module
         parameter values from a filename.
@@ -208,6 +214,46 @@ class Loader(object):
         """
 
         pass
+
+    def cases(self, modpar):
+
+        cases = {}
+        for key in self.val_cases:
+            cases[key] = self.format_module_string(key, modpar)
+        return cases
+
+    def _check_pathstring(self, pathstring, cases, all_cases=True):
+        """
+        Checks if a given folder or file is to be selected from
+        the list of subfolders in a given directory or
+        from a list of files in a directory.
+
+        INPUT:
+
+        pathstring - a string, foldername or filename
+        cases - a dictionary of module cases
+        """
+        seps = self.value_separator_template
+
+        def check_true(modstring):
+            """
+            We need to treat the quantity substring separately.
+            """
+
+            check_quantity = ((modstring.strip() in pathstring)) and (
+                pathstring.startswith(modstring.strip()))
+            check_modstr = (seps[0] + modstring.strip() +
+                            seps[0] in pathstring) or \
+                (seps[0] + modstring.strip() + seps[1] in pathstring)
+            # print(check_modstr)
+            return check_modstr or check_quantity
+
+        cases_fun = {True: all, False: any}
+
+        include = cases_fun[all_cases](check_true(case)
+                                       for case in cases.values())
+
+        return include
 
     def _get_results_file(self, filestr, results_folder):
         """
@@ -243,6 +289,3 @@ class Loader(object):
         os.chdir(cwd)
 
         return files
-
-
-

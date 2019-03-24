@@ -92,3 +92,4 @@ reformat_dict = {'W': 2., 'J': 4., 'JOF': 2., 'WSYM': 2., 'H_STAGG': 2.,
 # are formatted in the files we
 # are extracting from
 value_format_template = '{:+.5f}d0{}'
+value_separator_template = ['Mod_', '_tof']
