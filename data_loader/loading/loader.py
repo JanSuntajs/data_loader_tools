@@ -120,7 +120,7 @@ class Loader(object):
             sorted(set([module.strip("!?") for module in self.modules])))
         return mod_names
 
-    def format_module_string(self, modpar):
+    def _format_module_string(self, case, modpar):
         """
         A function that casts the string
         describing the module names into
@@ -139,40 +139,37 @@ class Loader(object):
                     corresponding values.
 
         """
-        strings = []
         mod_template = self.value_format_template
 
-        for case in self.modules:
-            names = []
-            if set(self.val_cases[case]) <= set(modpar.keys()):
-                for param in self.val_cases[case]:
-                    i = 0
-                    try:
-                        iter_type = self.pars[param]
-                        param_value = modpar[param]
-                        param_value *= 1. / float(self.reformat_dict[param])
+        names = []
+        if set(self.val_cases[case]) <= set(modpar.keys()):
+            for param in self.val_cases[case]:
+                i = 0
+                try:
+                    iter_type = self.pars[param]
+                    param_value = modpar[param]
+                    param_value *= 1. / float(self.reformat_dict[param])
 
-                        # offdiagonal term written first, then the diagonal
-                        if '_dg_' in iter_type:
-                            i = len(names)
+                    # offdiagonal term written first, then the diagonal
+                    if '_dg_' in iter_type:
+                        i = len(names)
 
-                        names.insert(i,
-                                     mod_template.format(
-                                         param_value, iter_type))
+                    names.insert(i,
+                                 mod_template.format(
+                                     param_value, iter_type))
 
-                    except KeyError:
-                        print(
-                            ('format_module_string info:'
-                             ' Key {} in modpar not present.')
-                            .format(param))
-                    # rescale param_value
+                except KeyError:
+                    print(
+                        ('format_module_string info:'
+                         ' Key {} in modpar not present.')
+                        .format(param))
+                # rescale param_value
 
-            print('_'.join(names))
-            names = '_'.join(names)
-            strings.append(names)
-        return strings
+        print('_'.join(names))
+        names = '_'.join(names)
+    return names
 
-    def rescale_modpar_params(self, modpar):
+    def _rescale_modpar_params(self, modpar):
         """
         A function that rescales the module
         parameters properly
@@ -199,7 +196,7 @@ class Loader(object):
 
         return folder
 
-    def get_results_folder(self, *args):
+    def _get_folder(self, *args):
         """
         Returns the path to the actual folder
         with results for a particular combination
@@ -215,7 +212,7 @@ class Loader(object):
         folder_exists = os.path.isdir(folder)
         return folder, folder_exists
 
-    def system_dict_to_str(self, system_dict={}):
+    def _system_dict_to_str(self, system_dict={}):
         """
         Converts a dictionary of system parameters
         into a string.
@@ -229,7 +226,7 @@ class Loader(object):
 
         pass
 
-    def system_str_to_dict(self, system_str=""):
+    def _system_str_to_dict(self, system_str=""):
         """
         Converts a string describing system
         parameters to a dict.
@@ -264,11 +261,19 @@ class Loader(object):
 
         pass
 
-    def cases(self, modpar):
+    def _cases(self, modpar):
+        """
+        Returns a dict where
+        keys are from the
+        self.val_cases dict
+        and values are
+        formatted module
+        strings.
 
+        """
         cases = {}
         for key in self.val_cases:
-            cases[key] = self.format_module_string(key, modpar)
+            cases[key] = self._format_module_string(key, modpar)
         return cases
 
     def _check_pathstring(self, pathstring, cases, all_cases=True):
@@ -276,13 +281,16 @@ class Loader(object):
         Checks if a given folder or file is to be selected from
         the list of subfolders in a given directory or
         from a list of files in a directory.
-
+        Intented usage: first call self_cases(modpar),
+        then plug the argument into _check_pathstring
+        as the cases argument.
         INPUT:
 
         pathstring - a string, foldername or filename
         cases - a dictionary of module cases
         """
         seps = self.value_separator_template
+        cases = self._cases(modpar)
 
         def check_true(modstring):
             """

@@ -1,5 +1,6 @@
 import numpy as _np
 
+import os
 from future.utils import iteritems
 
 from dataIO import hdf5saver as hds
@@ -23,7 +24,7 @@ class Mbl_Loader(Loader):
         return {key: value for (key, value)
                 in iteritems(inv_val_cases) if key in self.modules}
 
-    def system_dict_to_str(self, system_dict):
+    def _system_dict_to_str(self, system_dict):
         """
                 Converts a dict of system parameters
                 into a string
@@ -57,7 +58,7 @@ class Mbl_Loader(Loader):
                                                         system_dict['base'],
                                                         system_dict['nu'])
 
-    def system_str_to_dict(self, system_str):
+    def _system_str_to_dict(self, system_str):
         """
         Converts a string describing system
         parameters to a dict.
@@ -178,11 +179,15 @@ class Mbl_Loader(Loader):
 
     def load(self, filetype, syspar, modpar, ):
 
-        sys_str = self.system_dict_to_str(syspar)
+        sys_str = self._system_dict_to_str(syspar)
 
-
+        args = [self.mod_str, sys_str]
         # navigate towards sys_str folder
-        data_path, check_exist = self.get_results_folder(
-            filetype, self.mod_str, sys_str)
+        data_path, check_exist = self._get_folder(
+            filetype, *args)
+        cases = self._cases(modpar)
 
+        files = os.listdir(data_path)
+        files = [file for file in files
+                 if self._check_pathstring(file, cases)]
         return data_path
