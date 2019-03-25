@@ -3,6 +3,7 @@ import numpy as _np
 from dataIO import hdf5saver as hds
 
 from ..loading.loader import Loader
+from ..utils.helper_fun import get_key_from_val
 from . import mbl_job_defs as job_defs
 from . import mbl_misc_defs as misc_defs
 
@@ -10,8 +11,8 @@ from . import mbl_misc_defs as misc_defs
 class Mbl_Loader(Loader):
     def __init__(self, storage, data_path):
         super(Mbl_Loader, self).__init__(
-            misc_defs, job_defs, storage, data_path)
-
+            misc_defs, storage, data_path)
+        self.inv_val_cases = misc_defs.inv_val_cases
     #  methods
 
     def system_dict_to_str(self, system_dict):
@@ -83,6 +84,52 @@ class Mbl_Loader(Loader):
 
         return syspar
 
+    @staticmethod
+    def _split_modname(filename):
+        """
+        A function that splits a filename
+        in such a way that it returns
+        substrings describing particular
+        contributions to the Hamiltonian.
+
+        Example:
+        filename:
+
+        *_Mod_-1.00000d0_ih_2_+1.10000d0_dg_2_Mod_-1.00000d0_ih_2_+1.10000d0_dg_1_tof_0000.npy
+
+        The function would split the string according to the '_Mod_'
+        delimiter and return a list without the preceeding part
+        denoted by *.
+
+        Return would thus be:
+        [-1.00000d0_ih_2_+1.10000d0_dg_2_,
+        -1.00000d0_ih_2_+1.10000d0_dg_1_]
+        """
+
+        file, other = filename.split('_tof_')
+        mods = file.split('_Mod_')[1:]
+
+        return mods
+
+    @staticmethod
+    def _extract_iters(mod):
+        """
+        A function that returns iteration
+        signifiers from a modname substring.
+
+        Example:
+        mod: -1.00000d0_ih_2_+1.10000d0_dg_1_
+        The function should return:
+
+        ['_ih_2_', '_dg_1_']
+
+        """
+
+        mod = mod.replace('-', '/').replace('+', '/')
+        iters = mod.split('/')[1:]
+
+        return set([iter_[9:] for iter_ in iters])
+
     def get_modpar_values(self, file):
         """"
         Extract module parameter values from a filename
@@ -94,46 +141,45 @@ class Mbl_Loader(Loader):
         """
 
         vals = {}
-        file, misc_vals = file.split('_tof_')
-        names = file.split('_Mod_')
 
-        # quantity - what is stored in the file
-        # mods - modules that are stored in the file
-        mods = names[1:]
+        mods = self._split_modname(file)
+        # invert val_cases
 
         for mod in mods:
 
+            iters = self._extract_iters(mod)
+            case = get_key_from_val(iters, self.inv_val_cases)
             # SPIN FLIPS
-            if (('_ff_' in mod) and ('_dg_' in mod)):
-                case = 'flip'  # spin flips module - also contains
-            # the random spin disorder
+            # if (('_ff_' in mod) and ('_dg_' in mod)):
+            #     case = 'flip'  # spin flips module - also contains
+            # # the random spin disorder
 
-            # HOPPING
-            elif (('_ih_' in mod) and ('_dg_' in mod)):
-                if '_dg_0' in mod:
-                    case = 'hops'  # hopping module
-                elif '_dg_1' in mod:
-                    case = 'hcb_nn'
-                elif '_dg_2' in mod:
-                    case = 'hcb_snn'
+            # # HOPPING
+            # elif (('_ih_' in mod) and ('_dg_' in mod)):
+            #     if '_dg_0' in mod:
+            #         case = 'hops'  # hopping module
+            #     elif '_dg_1' in mod:
+            #         case = 'hcb_nn'
+            #     elif '_dg_2' in mod:
+            #         case = 'hcb_snn'
 
-            # DIAGONAL MODULES:
-            elif (('_dg_' in mod) and not (('_ih_' or '_ff_') in mod)):
+            # # DIAGONAL MODULES:
+            # elif (('_dg_' in mod) and not (('_ih_' or '_ff_') in mod)):
 
-                # STAGGERED FIELD
-                if ('_dg_0' in mod):
-                    case = 'h_stagg'
-                # HOLE DISORDER
-                if ('_dg_1' in mod):
-                    case = 'hole'  # random hole disorder module
-                # HOLE SYMMETRY BREAKING DISORDER
-                elif ('_dg_2' in mod):
-                    case = 'hole_sym'
-                # SPIN SYMMETRY BREAKING TERM
-                elif ('_dg_3' in mod):
-                    case = 'spin_sym'
-                elif ('_dg_4' in mod):
-                    case = 'hcb_dis'
+            #     # STAGGERED FIELD
+            #     if ('_dg_0' in mod):
+            #         case = 'h_stagg'
+            #     # HOLE DISORDER
+            #     if ('_dg_1' in mod):
+            #         case = 'hole'  # random hole disorder module
+            #     # HOLE SYMMETRY BREAKING DISORDER
+            #     elif ('_dg_2' in mod):
+            #         case = 'hole_sym'
+            #     # SPIN SYMMETRY BREAKING TERM
+            #     elif ('_dg_3' in mod):
+            #         case = 'spin_sym'
+            #     elif ('_dg_4' in mod):
+            #         case = 'hcb_dis'
 
             # finds the number in the modpar part of the filename string
             ind0 = 0
@@ -171,7 +217,7 @@ class Mbl_Loader(Loader):
         pathstring - a string, foldername or filename
         cases - a dictionary of module cases
         """
-        def _check_true(modstring):
+        def check_true(modstring):
             """
             We need to treat the quantity substring separately.
             """
@@ -190,6 +236,4 @@ class Mbl_Loader(Loader):
 
         return include
 
-
-    def load(filetype, modpar, syspar):
-
+    # def load(filetype, modpar, syspar):

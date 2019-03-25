@@ -29,7 +29,7 @@ class Loader(object):
                 mod_dict: dict
     """
 
-    def __init__(self, misc_defs_mod, job_defs_mod, storage, data_path):
+    def __init__(self, misc_defs_mod, storage, data_path):
         super(Loader, self).__init__()
 
         if self.__class__.__name__ == "Loader":
@@ -41,10 +41,6 @@ class Loader(object):
         self.reformat_dict = misc_defs_mod.reformat_dict
         self.value_format_template = misc_defs_mod.value_format_template
         self.value_separator_template = misc_defs_mod.value_separator_template
-
-        self.redef_dict = job_defs_mod.redef_dict
-        self.job_dict = job_defs_mod.job_dict
-        self.mod_dict = job_defs_mod.mod_dict
 
         self.storage = storage
         self.data_path = data_path
