@@ -117,7 +117,6 @@ def _get_pars_val_cases():
             if any('J' in elt for elt in dict_.keys()):
                 for key in dict_.keys():
                     new_key = key.replace('J', 'V')
-                    print(new_key)
                     dict_[new_key] = dict_.pop(key)
         par_dict.update(dict_)
         val_cases[name] = set(dict_.keys())
@@ -192,4 +191,4 @@ reformat_dict = {'W': 2., 'J2': 4., 'J1': 2., 'WSYM': 2., 'H_STAGG': 2.,
 # are formatted in the files we
 # are extracting from
 value_format_template = '{:+.5f}d0{}'
-value_separator_template = ['Mod_', '_tof']
+value_separator_template = ['Mod_', 'tof']

@@ -35,3 +35,4 @@ def merge_dicts(keys, template_dict={}):
             print('Key {} not found in template dict!'.format(key))
 
     return default
+

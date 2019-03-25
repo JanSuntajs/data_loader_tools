@@ -1,19 +1,27 @@
 import numpy as _np
 
+from future.utils import iteritems
+
 from dataIO import hdf5saver as hds
 
-from ..loading.loader import Loader
-from ..utils.helper_fun import get_key_from_val
-from . import mbl_job_defs as job_defs
+from ...loading.loader import Loader
+from ...utils.helper_fun import get_key_from_val
 from . import mbl_misc_defs as misc_defs
 
 
 class Mbl_Loader(Loader):
-    def __init__(self, storage, data_path):
+    def __init__(self, storage, data_path, modules):
         super(Mbl_Loader, self).__init__(
-            misc_defs, storage, data_path)
-        self.inv_val_cases = misc_defs.inv_val_cases
+            misc_defs, storage, data_path, modules)
+
     #  methods
+
+    @property
+    def inv_val_cases(self):
+        inv_val_cases = self._misc_defs.inv_val_cases.copy()
+
+        return {key: value for (key, value)
+                in iteritems(inv_val_cases) if key in self.modules}
 
     def system_dict_to_str(self, system_dict):
         """
@@ -84,8 +92,7 @@ class Mbl_Loader(Loader):
 
         return syspar
 
-    @staticmethod
-    def _split_modname(filename):
+    def _split_modname(self, filename):
         """
         A function that splits a filename
         in such a way that it returns
@@ -106,8 +113,9 @@ class Mbl_Loader(Loader):
         -1.00000d0_ih_2_+1.10000d0_dg_1_]
         """
 
-        file, other = filename.split('_tof_')
-        mods = file.split('_Mod_')[1:]
+        seps = self.value_separator_template
+        file, other = filename.split(seps[1])
+        mods = file.split(seps[0])[1:]
 
         return mods
 
@@ -122,18 +130,22 @@ class Mbl_Loader(Loader):
         The function should return:
 
         ['_ih_2_', '_dg_1_']
-
+        ['_ih_2_': '-1.00000d0', '_dg_1_': '+1.10000d0'  ]
         """
 
         mod = mod.replace('-', '/').replace('+', '/')
         iters = mod.split('/')[1:]
 
-        return set([iter_[9:] for iter_ in iters])
+        iter_vals = dict([iter_.split('d0')[::-1] for iter_ in iters])
+
+        iters = set(iter_vals.keys())
+
+        return iters, iter_vals
 
     def get_modpar_values(self, file):
         """"
         Extract module parameter values from a filename
-
+        string.
         INPUT:
 
         file - filename
@@ -147,93 +159,30 @@ class Mbl_Loader(Loader):
 
         for mod in mods:
 
-            iters = self._extract_iters(mod)
+            iters, iter_vals = self._extract_iters(mod)
             case = get_key_from_val(iters, self.inv_val_cases)
-            # SPIN FLIPS
-            # if (('_ff_' in mod) and ('_dg_' in mod)):
-            #     case = 'flip'  # spin flips module - also contains
-            # # the random spin disorder
-
-            # # HOPPING
-            # elif (('_ih_' in mod) and ('_dg_' in mod)):
-            #     if '_dg_0' in mod:
-            #         case = 'hops'  # hopping module
-            #     elif '_dg_1' in mod:
-            #         case = 'hcb_nn'
-            #     elif '_dg_2' in mod:
-            #         case = 'hcb_snn'
-
-            # # DIAGONAL MODULES:
-            # elif (('_dg_' in mod) and not (('_ih_' or '_ff_') in mod)):
-
-            #     # STAGGERED FIELD
-            #     if ('_dg_0' in mod):
-            #         case = 'h_stagg'
-            #     # HOLE DISORDER
-            #     if ('_dg_1' in mod):
-            #         case = 'hole'  # random hole disorder module
-            #     # HOLE SYMMETRY BREAKING DISORDER
-            #     elif ('_dg_2' in mod):
-            #         case = 'hole_sym'
-            #     # SPIN SYMMETRY BREAKING TERM
-            #     elif ('_dg_3' in mod):
-            #         case = 'spin_sym'
-            #     elif ('_dg_4' in mod):
-            #         case = 'hcb_dis'
 
             # finds the number in the modpar part of the filename string
-            ind0 = 0
-            for val_case in self.val_cases[case]:
-                ind = str.index(mod, self.pars[val_case])
-                numstr = mod[ind0: ind]
-                vals[val_case] = _np.float(numstr.replace('d', 'e'))
+            for param in self.val_cases[case]:
 
-                ind0 = ind + 5
+                param_symbol = self.pars[param]
+                vals[param] = _np.float(iter_vals[param_symbol])
 
         # formatting where needed so that the proper
         # parameter values are obtained
-        # reformat_dict={'W':2, 'J':4, 'JOF':2, 'WSYM':2, 'H_STAGG':2}
-
         # reformats (rescales) the extracted parameter value
-        for key in self.reformat_dict:
-            try:
-                vals[key] = float(self.reformat_dict[key]) * vals[key]
-            except KeyError:
-                print(
-                    ('get_modpar_values info: Key'
-                     '{} in vals not yet initialized').format(key))
+
+        for key in vals:
+            vals[key] *= float(self.reformat_dict[key])
 
         return vals
 
-    @staticmethod
-    def _check_pathstring(pathstring, cases, all_cases=True):
-        """
-        Checks if a given folder or file is to be selected from
-        the list of subfolders in a given directory or
-        from a list of files in a directory.
+    def load(self, filetype, syspar, modpar, ):
 
-        INPUT:
+        sys_str = self.system_dict_to_str(syspar)
 
-        pathstring - a string, foldername or filename
-        cases - a dictionary of module cases
-        """
-        def check_true(modstring):
-            """
-            We need to treat the quantity substring separately.
-            """
-            check_quantity = ((modstring.strip() in pathstring)) and (
-                pathstring.startswith(modstring.strip()))
-            check_modstr = ('Mod_' + modstring.strip() +
-                            '_Mod' in pathstring) or \
-                ('Mod_' + modstring.strip() + '_tof' in pathstring)
-            # print(check_modstr)
-            return check_modstr or check_quantity
+        # navigate towards sys_str folder
+        data_path, check_exist = self.get_results_folder(
+            filetype, self.mod_str, sys_str)
 
-        cases_fun = {True: all, False: any}
-
-        include = cases_fun[all_cases](check_true(case)
-                                       for case in cases.values())
-
-        return include
-
-    # def load(filetype, modpar, syspar):
+        return data_path

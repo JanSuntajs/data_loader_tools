@@ -5,6 +5,7 @@
 
 import os
 import glob
+from future.utils import iteritems
 
 
 class Loader(object):
@@ -29,24 +30,63 @@ class Loader(object):
                 mod_dict: dict
     """
 
-    def __init__(self, misc_defs_mod, storage, data_path):
+    modules = []
+
+    def __init__(self, misc_defs_mod, storage, data_path, modules):
         super(Loader, self).__init__()
 
         if self.__class__.__name__ == "Loader":
             raise ValueError("This class is not intended"
                              " to be instantiated directly.")
 
-        self.pars = misc_defs_mod.pars
-        self.val_cases = misc_defs_mod.val_cases
-        self.reformat_dict = misc_defs_mod.reformat_dict
-        self.value_format_template = misc_defs_mod.value_format_template
-        self.value_separator_template = misc_defs_mod.value_separator_template
+        self._misc_defs = misc_defs_mod
 
         self.storage = storage
         self.data_path = data_path
 
-    @staticmethod
-    def mod_str(modules):
+        for module in modules:
+            if module in self.misc_defs.val_cases.keys():
+                self.modules.append(module)
+            else:
+                raise ValueError(('Module {} not in the'
+                                  'list of allowed modules!'.format(
+                                      module)))
+
+    @property
+    def val_cases(self):
+
+        val_cases = self._misc_defs.val_cases.copy()
+
+        return {key: value for (key, value)
+                in iteritems(val_cases) if key in self.modules}
+
+    @property
+    def pars(self):
+
+        pars_def = self._misc_defs.pars.copy()
+        pars = {}
+        for key in self.val_cases:
+            for param in self.val_cases[key]:
+                pars[param] = pars_def[param]
+        return pars
+
+    @property
+    def reformat_dict(self):
+
+        return self._misc_defs.reformat_dict
+
+    @property
+    def value_format_template(self):
+
+        return self._misc_defs.value_format_template
+
+    @property
+    def value_separator_template(self):
+
+        return self._misc_defs.value_separator_template
+
+    @property
+    def mod_str(self):
         """
         Creates a joined string of modules given
         the name of Hamiltonian's modules as an
@@ -69,7 +109,7 @@ class Loader(object):
         """
 
         mod_names = "".join(
-            sorted(set([module.strip("!?") for module in modules])))
+            sorted(set([module.strip("!?") for module in self.modules])))
         return mod_names
 
     def format_module_string(self, case, modpar):
@@ -153,7 +193,7 @@ class Loader(object):
         of system and module parameters.
 
         """
-        folder = self.results_root_folder()
+        folder = self.results_root_folder
 
         for arg in args:
 
