@@ -45,7 +45,7 @@ class Loader(object):
         self.data_path = data_path
 
         for module in modules:
-            if module in self.misc_defs.val_cases.keys():
+            if module in self._misc_defs.val_cases.keys():
                 self.modules.append(module)
             else:
                 raise ValueError(('Module {} not in the'
@@ -69,6 +69,14 @@ class Loader(object):
             for param in self.val_cases[key]:
                 pars[param] = pars_def[param]
         return pars
+
+    @property
+    def default_modpars(self):
+
+        modpar = {}
+        for key in self.pars.keys():
+            modpar[key] = 0.0
+        return modpar
 
     @property
     def reformat_dict(self):
@@ -112,7 +120,7 @@ class Loader(object):
             sorted(set([module.strip("!?") for module in self.modules])))
         return mod_names
 
-    def format_module_string(self, case, modpar):
+    def format_module_string(self, modpar):
         """
         A function that casts the string
         describing the module names into
@@ -131,33 +139,38 @@ class Loader(object):
                     corresponding values.
 
         """
-        names = []
+        strings = []
         mod_template = self.value_format_template
 
-        if set(set.val_cases[case]) <= set(modpar.keys()):
-            for param in self.val_cases[case]:
-                i = 0
-                try:
-                    iter_type = self.pars[param]
-                    param_value = modpar[param]
-                    param_value *= 1. / float(self.reformat_dict[param])
+        for case in self.modules:
+            names = []
+            if set(self.val_cases[case]) <= set(modpar.keys()):
+                for param in self.val_cases[case]:
+                    i = 0
+                    try:
+                        iter_type = self.pars[param]
+                        param_value = modpar[param]
+                        param_value *= 1. / float(self.reformat_dict[param])
 
-                    # offdiagonal term written first, then the diagonal
-                    if '_dg_' in iter_type:
-                        i = len(names)
+                        # offdiagonal term written first, then the diagonal
+                        if '_dg_' in iter_type:
+                            i = len(names)
 
-                    names.insert(i,
-                                 mod_template.format(param_value, iter_type))
+                        names.insert(i,
+                                     mod_template.format(
+                                         param_value, iter_type))
 
-                except KeyError:
-                    print(
-                        ('format_module_string info:'
-                         ' Key {} in modpar not present.')
-                        .format(param))
-                # rescale param_value
+                    except KeyError:
+                        print(
+                            ('format_module_string info:'
+                             ' Key {} in modpar not present.')
+                            .format(param))
+                    # rescale param_value
 
-        print('_'.join(names))
-        return '_'.join(names)
+            print('_'.join(names))
+            names = '_'.join(names)
+            strings.append(names)
+        return strings
 
     def rescale_modpar_params(self, modpar):
         """

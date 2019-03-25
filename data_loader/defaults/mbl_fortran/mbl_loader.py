@@ -149,7 +149,6 @@ class Mbl_Loader(Loader):
         INPUT:
 
         file - filename
-        mode - hcb or tJ_heis studies
         """
 
         vals = {}
@@ -180,6 +179,7 @@ class Mbl_Loader(Loader):
     def load(self, filetype, syspar, modpar, ):
 
         sys_str = self.system_dict_to_str(syspar)
+
 
         # navigate towards sys_str folder
         data_path, check_exist = self.get_results_folder(
