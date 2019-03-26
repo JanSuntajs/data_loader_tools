@@ -7,6 +7,10 @@ import os
 import glob
 from future.utils import iteritems
 
+import numpy as _np
+
+from dataIO import hdf5saver as hds
+
 
 class Loader(object):
 
@@ -28,9 +32,32 @@ class Loader(object):
                 redef_dict: dict
                 job_dict: dict
                 mod_dict: dict
+
+    _available_load_methods: set
+                Which methods are available for
+                loading data.
+                set('hdf5', 'npy', 'gen')
+
+                'hdf5': loading .hdf5 files
+                'npy': loading '.npy' files
+                'gen': loading generic form
+                       using np.fromfile
+                'txt': load txt files using
+                       np.loadtxt
     """
 
     modules = []
+    _available_load_methods = set(['hdf5', 'npy', 'gen', 'txt'])
+    _load_fun_dict = {'hdf5': hds.hdf5load,
+                      'npy': _np.load,
+                      'gen': _np.fromfile,
+                      'txt': _np.loadtxt
+                      }
+
+    # set default
+    load_method = 'hdf5'
+
+    _load_fun = staticmethod(_load_fun_dict[load_method])
 
     def __init__(self, misc_defs_mod, storage, data_path, modules):
         super(Loader, self).__init__()
@@ -165,9 +192,9 @@ class Loader(object):
                         .format(param))
                 # rescale param_value
 
-        print('_'.join(names))
-        names = '_'.join(names)
-    return names
+        print(''.join(names))
+        names = ''.join(names)
+        return names
 
     def _rescale_modpar_params(self, modpar):
         """
@@ -290,7 +317,6 @@ class Loader(object):
         cases - a dictionary of module cases
         """
         seps = self.value_separator_template
-        cases = self._cases(modpar)
 
         def check_true(modstring):
             """
@@ -312,7 +338,7 @@ class Loader(object):
 
         return include
 
-    def _get_results_file(self, filestr, results_folder):
+    def _get_results_file(self, filestr, results_folder, *args, **kwargs):
         """
         A routine that creates a list of appropriate
         filenames in the folder for loading.
@@ -341,8 +367,12 @@ class Loader(object):
             print('Folder {} does not exist!'.format(results_folder))
             pass
 
-        files = glob.glob('*' + filestr + '*')
+        filenames = glob.glob('*' + filestr + '*')
         print(os.getcwd())
+
+        # load
+        files = [self._load_fun(filename, **kwargs) for filename in filenames]
+
         os.chdir(cwd)
 
         return files

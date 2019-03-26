@@ -3,14 +3,23 @@ import numpy as _np
 import os
 from future.utils import iteritems
 
-from dataIO import hdf5saver as hds
-
 from ...loading.loader import Loader
 from ...utils.helper_fun import get_key_from_val
 from . import mbl_misc_defs as misc_defs
 
 
 class Mbl_Loader(Loader):
+    """
+    A class for loading mbl datasets
+    that inherits from the loader
+    class.
+
+    Some attributes explained (more
+    has to be done in the future):
+
+    load_method:
+    """
+
     def __init__(self, storage, data_path, modules):
         super(Mbl_Loader, self).__init__(
             misc_defs, storage, data_path, modules)
@@ -147,9 +156,28 @@ class Mbl_Loader(Loader):
         """"
         Extract module parameter values from a filename
         string.
-        INPUT:
 
-        file - filename
+        Parameters
+        ----------
+        file - str
+
+            Filename of the form:
+            *_Mod_-1.00000d0_ih_2_+1.10000d0_dg_2_Mod_+5.00000d0
+            _dg_4_Mod_-1.00000d0_ih_2_+1.10000d0_dg_1_tof_0000*
+
+            The routine extracts the numerical values and
+            associates them to their parameters based on the values
+            of symbols such as _ih_2_, _dg_2_ and the like.
+
+        Returns
+        -------
+        vals: dict
+            A dict of key-value pairs where key is a parameter
+            (for instance T, T1, V, V1 - the usual Hamiltonian
+            model parameters) and values are the (rescaled)
+            numerical values.
+
+
         """
 
         vals = {}
@@ -177,17 +205,29 @@ class Mbl_Loader(Loader):
 
         return vals
 
-    def load(self, filetype, syspar, modpar, ):
+    def load(self, datatype, filetype, syspar, modpar, *args, **kwargs):
+        """
+
+
+        """
 
         sys_str = self._system_dict_to_str(syspar)
 
         args = [self.mod_str, sys_str]
         # navigate towards sys_str folder
         data_path, check_exist = self._get_folder(
-            filetype, *args)
+            datatype, *args)
+
         cases = self._cases(modpar)
 
-        files = os.listdir(data_path)
-        files = [file for file in files
-                 if self._check_pathstring(file, cases)]
-        return data_path
+        folders = os.listdir(data_path)
+
+        folder = next((folder for folder in folders if self._check_pathstring(
+            folder, cases)), None)
+
+        results_folder = data_path + '/' + folder
+
+        results = self._get_results_file(
+            filetype, results_folder, *args, **kwargs)
+
+        return results
