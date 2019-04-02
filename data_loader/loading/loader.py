@@ -12,6 +12,33 @@ import numpy as _np
 from dataIO import hdf5saver as hds
 
 
+def mod_str(modules):
+    """
+    Creates a joined string of modules given
+    the name of Hamiltonian's modules as an
+    input.
+
+    This routine is needed in finding the
+    locations of the data files needed for
+    analysis and plotting.
+
+        Parameters
+        ----------
+        modules: list
+                        A list of strings which should
+                        correspond to Hamiltonian
+                        module names
+        Returns
+        -------
+        mod_names: string
+                        A joined string of parameter names
+    """
+
+    mod_names = "".join(
+        sorted(set([module.strip("!?") for module in modules])))
+    return mod_names
+
+
 class Loader(object):
 
     """
@@ -143,9 +170,9 @@ class Loader(object):
                             A joined string of parameter names
         """
 
-        mod_names = "".join(
-            sorted(set([module.strip("!?") for module in self.modules])))
-        return mod_names
+        # mod_names = "".join(
+        #     sorted(set([module.strip("!?") for module in self.modules])))
+        return mod_str(self.modules)
 
     def _format_module_string(self, case, modpar):
         """
