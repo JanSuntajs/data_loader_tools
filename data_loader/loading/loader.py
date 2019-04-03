@@ -84,8 +84,6 @@ class Loader(object):
     # set default
     load_method = 'hdf5'
 
-    _load_fun = staticmethod(_load_fun_dict[load_method])
-
     def __init__(self, misc_defs_mod, storage, data_path, modules):
         super(Loader, self).__init__()
 
@@ -105,6 +103,10 @@ class Loader(object):
                 raise ValueError(('Module {} not in the'
                                   'list of allowed modules!'.format(
                                       module)))
+
+    @property
+    def _load_fun(self):
+        return self._load_fun_dict[self.load_method]
 
     @property
     def val_cases(self):
@@ -396,7 +398,7 @@ class Loader(object):
 
         filenames = glob.glob('*' + filestr + '*')
         print(os.getcwd())
-
+        print(filenames)
         # load
         files = [self._load_fun(filename, **kwargs) for filename in filenames]
 
