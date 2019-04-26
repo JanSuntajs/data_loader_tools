@@ -73,7 +73,6 @@ class Loader(object):
                        np.loadtxt
     """
 
-    modules = []
     _available_load_methods = set(['hdf5', 'npy', 'gen', 'txt'])
     _load_fun_dict = {'hdf5': hds.hdf5load,
                       'npy': _np.load,
@@ -95,7 +94,7 @@ class Loader(object):
 
         self.storage = storage
         self.data_path = data_path
-
+        self.modules = []
         for module in modules:
             if module in self._misc_defs.val_cases.keys():
                 self.modules.append(module)
